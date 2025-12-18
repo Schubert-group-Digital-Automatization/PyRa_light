@@ -1,0 +1,97 @@
+@startuml PyRa_light_ComponentDiagram
+
+top to bottom direction
+
+' =========================================================================
+' STYLING
+' =========================================================================
+skinparam linetype ortho
+
+
+!pragma layout elk
+
+' =================================================================
+' IO PACKAGE
+' =================================================================
+
+package "PyRa_light"{
+    package "io" {
+        component "Loader" as loader
+        
+        file "BaseConverter" as ibase
+        
+        component "converters" as converters {
+            component "Jcamp"
+            component "Opus"
+            component "Spc"
+            component "Wdf"
+            component "Witec"
+        }
+    }
+
+    ' =================================================================
+    ' UTILS PACKAGE
+    ' =================================================================
+    package "utils" {
+        component "Registry" as registry
+    }
+
+    ' =================================================================
+    ' CORE PACKAGE
+    ' =================================================================
+    package "core" {
+        together {
+            component "Ra"
+            component "RaProc"
+            component "Converted"
+        }
+        
+        component "Metadata" as metadata
+        component "Merge" as merge
+    }
+
+    ' =================================================================
+    ' EXPORT PACKAGE
+    ' =================================================================
+    package "export" {
+        component "JSONExport" as exporter
+    }
+    
+    ' =================================================================
+    ' Plot_print PACKAGE
+    ' =================================================================
+    package "plot_print" {
+        component "plot_print" as pp
+    }
+}
+' =========================================================================
+' RELATIONSHIPS & DEPENDENCIES
+' =========================================================================
+
+Jcamp ..|> ibase
+Opus ..|> ibase
+Spc ..|> ibase
+Wdf ..|> ibase
+Witec ..|> ibase
+
+loader ..> ibase : convert()
+loader .up.> registry : chooses converter
+registry ..> converters : instantiates
+loader ..> Converted : creates 
+
+Ra ..> metadata : uses
+Converted ..> Ra : consumes
+RaProc ..> metadata : uses
+merge ..> Ra : consumes
+merge ..> RaProc : produces
+merge ..> metadata : uses
+
+exporter <.up. Ra : exports
+exporter <.up. RaProc : exports 
+exporter <.up. Converted : exports
+
+pp <.right. Ra: prints & plots
+pp <.right. RaProc: prints & plots
+pp <.right. Converted: prints & plots
+
+@enduml

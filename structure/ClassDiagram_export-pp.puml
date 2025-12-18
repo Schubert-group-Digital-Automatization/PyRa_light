@@ -1,0 +1,115 @@
+@startuml PyRa_light_ClassDiagram
+
+' =========================================================================
+' STYLING
+' =========================================================================
+!pragma layout elk
+
+skinparam defaultFontName SF Pro
+skinparam DefaultFontSize 12
+
+skinparam CircledCharacterFontName SF Pro Rounded
+skinparam CircledCharacterFontSize 20
+
+skinparam ClassBorderThickness 1
+skinparam ClassFontName SF Pro Display 
+skinparam ClassFontStyle italic
+skinparam ClassFontSize 16
+
+skinparam ClassAttributeIconSize 12
+
+skinparam ArrowMessageAlignment center
+skinparam ArrowFontName SF Mono
+
+
+
+' =========================================================================
+' PyRa_light.plot_print
+' =========================================================================
+
+package "PyRa_light.plot_print" as PlotPrint {
+
+  class PlotPrintModule <<(M,#DDDDFF) module>> {
+    + format_metadata_tables()
+    + print_metadata_tables()
+    + plot_raman_xy()
+  }
+  hide PlotPrintModule attributes
+}
+
+' =========================================================================
+' PyRa_light.export
+' =========================================================================
+package "core" {
+  package "converted" <<Frame>>{
+
+  dataclass ConvertedMeasurement {
+    ...
+    --
+    ...
+    + to_dict()
+  }
+
+  dataclass ConvertedFile {
+    ...
+    --
+    ...
+    + to_dict()
+  }
+}
+
+package "ra" <<Frame>>{
+
+  dataclass Ra {
+    ...
+    --
+    ...
+    + to_dict()
+  }
+}
+
+package "raproc" <<Frame>>{
+
+  dataclass RaProc {
+    ...
+    --
+    ...
+    + to_dict()
+  }
+}
+}
+
+package "PyRa_light.export" as Export {
+
+  enum ExportMode {
+    OVERWRITE
+    SKIP
+  }
+
+  class JSONExport {
+    + export_dir : Path
+    + mode : ExportMode
+    --
+    + export()
+  }
+}
+
+' =========================================================================
+' RELATIONSHIPS
+' =========================================================================
+
+' Plot/print dependencies (Usage)
+core.converted.ConvertedMeasurement ..> PlotPrint.PlotPrintModule : uses
+core.converted.ConvertedFile ..> PlotPrint.PlotPrintModule : uses
+core.ra.Ra ..> PlotPrint.PlotPrintModule : uses
+core.raproc.RaProc ..> PlotPrint.PlotPrintModule : uses
+
+' Export Configuration (Association/Attribute)
+Export.JSONExport -up-> Export.ExportMode : has attribute
+
+' Export Data Flow (Dependency/Parameter)
+Export.JSONExport .up.> core.ra.Ra : <<exports>>
+Export.JSONExport .up.> core.raproc.RaProc : <<exports>>
+Export.JSONExport .up.> core.converted.ConvertedFile : <<exports>>
+
+@enduml

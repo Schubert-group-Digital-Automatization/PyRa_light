@@ -1,0 +1,138 @@
+@startuml PyRa_light_SequenceDiagram
+
+' =========================================================================
+' STYLING
+' =========================================================================
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 250
+skinparam participantPadding 20
+skinparam boxPadding 10
+
+skinparam defaultFontName "Menlo"
+skinparam defaultFontSize 9
+
+autonumber
+
+actor "User" as user
+
+box "IO Layer" #e1f5fe
+    participant "Loader" as loader
+    participant "ConverterRegistry" as registry
+    participant "BaseConverter" as converter
+end box
+
+box "Core Models" #e8f5e9
+    participant "ConvertedFile" as cfile
+    participant "Ra" as ra
+    participant "MetadataModule" as meta
+end box
+
+box "Processing & Merge" #fff3e0
+    participant "MergeModule" as merger
+    participant "RaProc" as raproc
+end box
+
+box "Export Layer" #f3e5f5
+    participant "JSONExport" as exporter
+end box
+
+' =========================================================================
+' PHASE 1: LOADING
+' =========================================================================
+== Phase 1: File Loading ==
+
+user -> loader : load_file("sample.spc")
+activate loader
+
+    loader -> registry : get_converter("sample.spc")
+    activate registry
+    registry --> loader : SpcConverter instance
+    deactivate registry
+
+    loader -> converter : convert("sample.spc")
+    activate converter
+        converter --> loader : ConvertedData
+    deactivate converter
+
+    loader -> cfile : from_dict(data, path)
+    activate cfile
+        cfile -> cfile : create ConvertedMeasurement(s)
+        cfile --> loader : ConvertedFile instance
+    deactivate cfile
+
+    loader --> user : ConvertedFile
+deactivate loader
+
+' =========================================================================
+' PHASE 2: UNIFICATION
+' =========================================================================
+== Phase 2: Unification (Raw -> Ra) ==
+
+user -> ra : from_converted_file(converted_file)
+activate ra
+
+    loop for each measurement
+        ra -> ra : from_converted_measurement(meas)
+        activate ra
+            
+            ra -> ra : __post_init__()
+            activate ra
+                ra -> meta : unify_metadata(raw_meta)
+                activate meta
+                    meta -> meta : map_metadata(raw_meta)
+                    meta --> ra : Unified MetadataDict
+                deactivate meta
+            deactivate ra
+            
+        deactivate ra
+    end
+
+    ra --> user : list[Ra]
+deactivate ra
+
+' =========================================================================
+' PHASE 3: MERGING
+' =========================================================================
+== Phase 3: Processing (Merge) ==
+note over user,merger: method can be "average", "accumulate" or "median"
+user -> merger : merge_ras(list[Ra], method="average")
+activate merger
+
+    merger -> merger : Validate x-grids match
+    merger -> merger : Compute Stats (Mean, SEM, STD)
+    merger -> merger : Merge Metadata (Strategies)
+
+    create raproc
+    merger -> raproc : __init__(x, y, stats, meta...)
+    activate raproc
+    raproc --> merger : RaProc instance
+    deactivate raproc
+
+    merger --> user : RaProc
+deactivate merger
+
+' =========================================================================
+' PHASE 4: EXPORTING
+' =========================================================================
+== Phase 4: Export ==
+
+user -> exporter : new JSONExport(export_dir)
+activate exporter
+exporter --> user : instance
+deactivate exporter
+
+user -> exporter : export_raproc(raproc)
+activate exporter
+
+    exporter -> raproc : to_dict()
+    activate raproc
+    raproc --> exporter : dict
+    deactivate raproc
+
+    exporter -> exporter : write_json(path)
+    exporter --> user : Path (saved file)
+
+deactivate exporter
+
+@enduml

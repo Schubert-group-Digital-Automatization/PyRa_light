@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "PyRa_light"
+version = "0.1.0"
+description = "PyRa_light: lightweight properietary Raman-file converter and unifier."
+license = { file = "LICENSE" }
+authors = [
+    { name = "Moritz Kleybolte" }  # optional, adjust/remove as you like
+]
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["raman", "converter", "OPUS", "PyRa", "chemistry"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: Apache Software License",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Chemistry",
+]
+dependencies = [
+    "numpy",
+    "pandas",
+    "tabulate",
+    "brukeropus",
+    "h5py",
+    "renishawWiRE",
+    "jcamp",
+    "spc_spectra",
+    "photonicdata-files-wip @ git+https://git.photonicdata.science/py-packages/photonicdata-files-wip.git",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "mypy",
+]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+packages = [
+    "PyRa_light",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "smoke: quick smoke tests for thin wrapper or integration-adjacent behavior",
+    "integration: tests that run against real vendor fixture files",
+]

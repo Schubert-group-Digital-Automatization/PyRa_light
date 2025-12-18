@@ -1,0 +1,227 @@
+@startuml PyRa_light_ClassDiagram
+
+' =========================================================================
+' STYLING
+' =========================================================================
+!pragma layout elk
+
+skinparam defaultFontName SF Pro
+skinparam DefaultFontSize 12
+
+skinparam CircledCharacterFontName SF Pro Rounded
+skinparam CircledCharacterFontSize 20
+
+skinparam ClassBorderThickness 1
+skinparam ClassFontName SF Pro Display 
+skinparam ClassFontStyle italic
+skinparam ClassFontSize 16
+
+skinparam ClassAttributeIconSize 12
+
+skinparam ArrowMessageAlignment center
+skinparam ArrowFontName SF Mono
+
+' =========================================================================
+' PyRa_light.core
+' =========================================================================
+package "IO" {
+  class Loader <<(M,#DDDDFF) module>> {
+      +load_file()
+  }
+}
+
+
+package "PyRa_light.core" as Core {
+
+' ------------------- core.converted -------------------------------
+  package "converted" <<Frame>>{
+
+    dataclass ConvertedMeasurement {
+      + path : Path
+      + index : int
+      + fileformat : str
+      + x : np.ndarray
+      + y : np.ndarray
+      + x_label : str
+      + y_label : str | None
+      + raw_metadata : dict[str, Any]
+      + other_spectra : dict[str, Any]
+      --
+      + n_points : int
+      + inject_meta()
+      + print_metadata()
+      + plot_raman()
+      + to_dict()
+    }
+
+    dataclass ConvertedFile {
+      + path : Path
+      + fileformat : str
+      + filename : str
+      + measurements : list[ConvertedMeasurement]
+      + raw : dict[str, Any]
+      --
+      + n_measurements : int
+      + from_dict()
+      + print_metadata()
+      + plot_raman()
+      + to_dict()
+    }
+  }
+
+  ' ------------------- core.metadata -------------------------------
+  package "metadata" <<Frame>>{
+
+    struct "MetadataDict" <<TypedDict>> {
+      dict[str, Any]
+    }
+
+    enum MetadataField {
+      SAMPLE_NAME
+      SAMPLE_TYPE
+      MEASUREMENT_DATETIME
+      INSTRUMENT_MANUFACTURER
+      INSTRUMENT_MODEL
+      EXCITATION_WAVELENGTH_NM
+      ...
+    }
+
+    dataclass FieldMapping {
+      + field : MetadataField
+      + aliases : list[str]
+      + converter : Callable | None
+      --
+      + convert()
+    }
+
+    class MetadataMapper {
+      - _alias_to_mapping : dict[str, FieldMapping]
+      --
+      + map_metadata()
+    }
+
+    class MetadataModule <<(M,#DDDDFF) module>> {
+      + unify_metadata()
+    }
+    hide MetadataModule attributes
+  }
+
+  together{
+    ' ------------------- core.ra -------------------------------
+    package "ra" <<Frame>>{
+
+      dataclass Ra {
+        + x : np.ndarray
+        + y : np.ndarray
+        + filename : str
+        + sample_name : str
+        + unified_meta : MetadataDict
+        + metadata_user : dict[str, Any]
+        + x_unit : str
+        + y_unit : str
+        --
+        + {static}from_converted_measurement()
+        + {static}from_converted_file()
+        + inject_meta()
+        + edit_meta()
+        + print_metadata()
+        + plot_raman()
+        + to_dict() 
+      }
+    }
+
+    ' ------------------- core.raproc -------------------------------
+    package "raproc" <<Frame>>{
+
+      struct ProcessingInfo <<TypedDict>> {
+        + method : str
+        + n_spectra : int
+        + merge_timestamp : str
+        + source_indices : list[int]
+      }
+
+      dataclass RaProc {
+        + filenames : list[str]
+        + sample_names : list[str]
+        + merged_sample_name : str
+        + x_processed : np.ndarray
+        + y_processed : np.ndarray
+        + y_err : np.ndarray | None
+        + y_sem : np.ndarray | None
+        + y_mad : np.ndarray | None
+        + y_q25 : np.ndarray | None
+        + y_q75 : np.ndarray | None
+        + x_unit : str
+        + y_unit : str
+        + unified_meta : MetadataDict
+        + metadata_user : dict[str, Any]
+        + processing : ProcessingInfo
+        --
+        + inject_meta()
+        + edit_meta()
+        + print_metadata()
+        + plot_raman()
+        + to_dict()
+      }
+    }
+  }
+
+  ' ------------------- core.merge -------------------------------
+  package "merge" <<Frame>>{
+
+    enum MergeMethod {
+      AVERAGE
+      ACCUMULATE
+      MEDIAN
+    }
+
+    enum MetadataMergeStrategy {
+      KEEP_FIRST
+      KEEP_COMMON
+      COLLECT_ALL
+      AVERAGE_NUMERIC
+    }
+
+    class MergeModule <<(M,#DDDDFF) module>> {
+      + merge_ras()
+    }
+    hide MergeModule attributes
+  }
+}
+
+' =========================================================================
+' RELATIONSHIPS
+' =========================================================================
+
+'Core composition
+Core.converted.ConvertedFile "1" *-- "0..*" Core.converted.ConvertedMeasurement : contains
+Core.raproc.RaProc "1" *-- "1" Core.raproc.ProcessingInfo : contains
+
+' Factory Dependencies
+Core.ra.Ra .up.> Core.converted.ConvertedMeasurement : <<creates from>>
+Core.ra.Ra .up.> Core.converted.ConvertedFile : <<creates from>>
+
+' Metadata mapping
+Core.metadata.FieldMapping --> Core.metadata.MetadataField : maps to
+Core.metadata.MetadataModule ..> Core.metadata.MetadataMapper : uses
+Core.metadata.MetadataMapper o-- Core.metadata.FieldMapping : holds mappings
+Core.ra.Ra ..> Core.metadata.MetadataModule : uses
+Core.ra.Ra --> Core.metadata.MetadataDict : has unified_meta
+Core.raproc.RaProc --> Core.metadata.MetadataDict : has unified_meta
+Core.metadata.MetadataMapper ..> Core.metadata.MetadataDict : <<creates>>
+Core.metadata.MetadataModule ..> Core.metadata.MetadataDict : <<returns>>
+
+' Merge
+Core.merge.MergeModule ..> Core.ra.Ra : <<reads>>
+Core.merge.MergeModule ..> Core.raproc.RaProc : <<creates>>
+Core.merge.MergeModule ..> Core.merge.MergeMethod : uses
+Core.merge.MergeModule ..> Core.merge.MetadataMergeStrategy : uses
+
+' IO dependencies
+IO.Loader .down.> Core.converted.ConvertedFile : <<creates>>
+
+Core.merge -[hidden]up-> Core.converted
+Core.ra.Ra -[hidden]right-> Core.merge.MergeMethod
+Core.raproc.ProcessingInfo -[hidden]left-> Core.merge.MergeModule
+
+@enduml

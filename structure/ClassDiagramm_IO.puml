@@ -1,0 +1,119 @@
+@startuml "PyRa_light IO"
+
+' =========================================================================
+' Styling & Configuration
+' =========================================================================
+!pragma layout elk
+
+skinparam defaultFontName SF Pro
+skinparam DefaultFontSize 12
+
+skinparam CircledCharacterFontName SF Pro Rounded
+skinparam CircledCharacterFontSize 20
+
+skinparam ClassBorderThickness 1
+skinparam ClassFontName SF Pro Display 
+skinparam ClassFontStyle italic
+skinparam ClassFontSize 16
+
+skinparam ClassAttributeIconSize 12
+
+skinparam ArrowMessageAlignment center
+skinparam ArrowFontName SF Mono
+
+' =========================================================================
+' PyRa_light.io
+' =========================================================================
+package "PyRa_light/io" <<Folder>>{
+    
+    exception UnsupportedFormatError <<Exception>> {
+    }
+
+    together{
+        abstract class BaseConverter <<AbtractBaseClass>>{
+            +format_name : str
+            +supported_extensions : list[str]
+            +logger : logging.Logger
+            {abstract} +convert()
+            #_create_output()
+        }
+
+        class Loader <<(M,#DDDDFF) module>> {
+            +get_converter()
+            +load_file()
+        }
+    }
+
+    package "PyRa_light/io/converters" as converters <<Folder>>{
+        class JcampConverter {
+            +format_name : str
+            +supported_extensions : list[str]
+            +convert()
+        }
+        
+        class OpusConverter {
+            +format_name : str
+            +supported_extensions : list[str]
+            +convert()
+        }
+
+        class SpcConverter {
+            +format_name : str
+            +supported_extensions : list[str]
+            +convert()
+        }
+
+        class WdfConverter {
+            +format_name : str
+            +supported_extensions : list[str]
+            +convert()
+        }
+
+        class WitecConverter {
+            +format_name : str
+            +supported_extensions : list[str]
+            +convert()
+        }
+    }
+}
+
+' =========================================================================
+' PyRa_light.utils
+' =========================================================================
+package "PyRa_light_utils" {
+    class ConverterRegistry {
+        -_converters : dict[str, BaseConverter]
+        +get_converter()
+        +can_read()
+        +list_formats()
+    }
+
+    class RegistryUtils <<(M,#DDDDFF) module>> {
+        +get_default_registry()
+    }
+}
+
+' =========================================================================
+' RELATIONSHIPS
+' =========================================================================
+
+' IO dependencies - Inheritance
+BaseConverter <|-- JcampConverter
+BaseConverter <|-- OpusConverter
+BaseConverter <|-- SpcConverter
+BaseConverter <|-- WdfConverter
+BaseConverter <|-- WitecConverter
+
+' Loader
+Loader ..up..> RegistryUtils :  get registry
+Loader ..> BaseConverter : checks types
+Loader ..> UnsupportedFormatError : raises
+
+' Registry - Factory dependencies
+ConverterRegistry ..> converters : instantiates
+
+ConverterRegistry --> BaseConverter : manages types
+ConverterRegistry ..> UnsupportedFormatError : raises
+RegistryUtils --> ConverterRegistry : provides singleton
+
+@enduml
