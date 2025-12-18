@@ -5,6 +5,10 @@ __pycache__/
 
 # Apple Stuff
 
+# VS Code
+
+.vscode
+
 .DS_Store
 ._*
 
