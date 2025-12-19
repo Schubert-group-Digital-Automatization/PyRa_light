@@ -95,11 +95,20 @@ def _to_int(value: Any) -> Optional[int]:
 
     Returns
     -------
-    float or None
+    int or None
         Integer representation of value, or None if conversion fails.
     """
-    if value in (None, ""):
+    if value is None:
         return None
+
+    if isinstance(value, str):
+        value = value.strip()
+        if value == "":
+            return None
+
+    if value == "":
+        return None
+
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -119,8 +128,17 @@ def _to_float(value: Any) -> Optional[float]:
     float or None
         Float representation of value, or None if conversion fails.
     """
-    if value in (None, ""):
+    if value is None:
         return None
+
+    if isinstance(value, str):
+        value = value.strip()
+        if value == "":
+            return None
+
+    if value == "":
+        return None
+
     try:
         return float(value)
     except (TypeError, ValueError):
@@ -143,7 +161,15 @@ def _to_bool(value: Any) -> Optional[bool]:
         numeric 1/0, and bools, or None if input is None, empty, or
         unrecognized.
     """
-    if value in (None, ""):
+    if value is None:
+        return None
+
+    if isinstance(value, str):
+        value = value.strip()
+        if value == "":
+            return None
+
+    if value == "":
         return None
     if isinstance(value, bool):
         return value
@@ -154,7 +180,7 @@ def _to_bool(value: Any) -> Optional[bool]:
             return False
         return None
     if isinstance(value, str):
-        val = value.strip().lower()
+        val = value.lower()
         if val in ("true", "yes", "1", "on"):
             return True
         if val in ("false", "no", "0", "off"):
@@ -492,6 +518,8 @@ FIELD_MAPPINGS = [
             "microscope_config",
             "microscope setup",
             "microscope_setup",
+            "measurement channel",
+            "measurement_channel",
         ],
     ),
 
@@ -533,6 +561,7 @@ FIELD_MAPPINGS = [
         [
             "integration_time_s",
             "integration_time",  # another gamble...might be removed
+            "integration time",
             "integration time [s]",
             "integration time (s)",
             "exposure time (s)",
@@ -573,6 +602,7 @@ FIELD_MAPPINGS = [
             "accumulation_number",
             "number of accumulations",
             "number of scans",
+            "number of sample scans",
             "number_of_scans",
             "number_scans",
         ],
@@ -805,8 +835,9 @@ FIELD_MAPPINGS = [
             "objective aperture",
             "objective aperture [um]",
             "objective aperture (um)",
+            "aperture setting",
+            "aperture_setting",
         ],
-        converter=_to_float,
     ),
 
     FieldMapping(
@@ -846,7 +877,6 @@ FIELD_MAPPINGS = [
     FieldMapping(
         MetadataField.GRATING_GROOVES_MM,
         [
-            "grating",
             "grating_part_number",
             "grating name",
             "grating grooves/mm",
@@ -925,11 +955,11 @@ FIELD_MAPPINGS = [
             "auto_background",
             "auto_bg",
             "automatic background",
-            "automatic fluorescence rejection",
             "background_subtracted",
             "background subtracted",
             "dark_subtracted",
             "background corrected",
+            "raman background corrected",
         ],
         converter=_to_bool,
     ),
@@ -949,10 +979,6 @@ FIELD_MAPPINGS = [
             "background_removal_method",
             "background removal algorithm",
             "background_removal_algorithm",
-            "fluorescence_rejection_method",
-            "fluorescence rejection method",
-            "fluorescence_correction_method",
-            "fluorescence correction method",
         ],
     ),
 
@@ -981,10 +1007,6 @@ FIELD_MAPPINGS = [
             "raman correction method",
             "raman_correction_algorithm",
             "raman correction algorithm",
-            "fluorescence_correction_method",
-            "fluorescence correction method",
-            "fluorescence_removal_method",
-            "fluorescence removal method",
         ],
     ),
 
@@ -1053,6 +1075,7 @@ FIELD_MAPPINGS = [
         [
             "cosmic_ray_removal",
             "cosmic ray removal",
+            "cosmic spike removal",
             "cosmic ray correction",
             "cosmic rays removed",
             "cosmic ray filter",
