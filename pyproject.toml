@@ -41,7 +41,11 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = [{ include = "PyRa_light", from = "src" }]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["PyRa_light*"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
