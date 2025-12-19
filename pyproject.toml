@@ -23,6 +23,7 @@ classifiers = [
 ]
 dependencies = [
     "numpy",
+    "matplotlib"
     "pandas",
     "tabulate",
     "brukeropus",
