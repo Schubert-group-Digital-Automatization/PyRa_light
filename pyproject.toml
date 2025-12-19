@@ -47,6 +47,10 @@ packages = [
 ]
 
 [tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra"
+pythonpath = ["src"]
+testpaths = ["test"]
 markers = [
     "smoke: quick smoke tests for thin wrapper or integration-adjacent behavior",
     "integration: tests that run against real vendor fixture files",

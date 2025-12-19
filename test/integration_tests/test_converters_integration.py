@@ -1,7 +1,4 @@
-"""End-to-end integration tests for all file converters.
-
-These tests run against real fixture files under ``test/integration_tests/data``
-"""
+"""End-to-end integration tests for the IO loader."""
 
 # pylint: disable=redefined-outer-name
 # pylint: disable=import-error
@@ -9,137 +6,101 @@ These tests run against real fixture files under ``test/integration_tests/data``
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import pytest
 
 from PyRa_light.io.loader import get_converter, load_file
+from PyRa_light.io.converters_base import BaseConverter
+from PyRa_light.core.converted import ConvertedFile, ConvertedMeasurement
 
 
 pytestmark = pytest.mark.integration
 
-DATA_ROOT = Path(__file__).resolve().parent / "data"
+
+def test_integration_fixtures_present(
+    integration_data_root: Path,
+    integration_cases: list[tuple[Path, str]],
+) -> None:
+    """Assert the integration data folder exists and contains at least one supported file."""
+    if not integration_data_root.exists():
+        pytest.skip(f"Integration data directory not found: {integration_data_root}")
+    assert integration_cases, (
+        f"No supported integration fixture files found under: {integration_data_root}"
+    )
 
 
-def _expected_format(path: Path) -> str | None:
-    """
-    Map a fixture file to an expected ConvertedFile.fileformat (lowercase).
+def test_get_converter_selects_a_converter(
+    representative_cases: list[tuple[Path, str]],
+) -> None:
+    """Ensure the registry selects a concrete converter for supported fixtures."""
+    tested = 0
 
-    Returns None for unknown/unsupported extensions (those are ignored by this suite).
-    """
-    suffix = path.suffix.lower()
-
-    if suffix.startswith(".") and suffix[1:].isdigit():
-        return "opus"
-
-    mapping = {
-        ".opus": "opus",
-        ".spc": "spc",
-        ".wdf": "wdf",
-        ".wip": "witec",
-        ".dx": "jcamp",
-        ".jdx": "jcamp",
-        ".jcamp": "jcamp",
-    }
-    return mapping.get(suffix)
-
-
-def _discover_cases(data_root: Path) -> list[Any]:
-    """Discover real fixture files and build parametrized test cases."""
-    if not data_root.exists():
-        return []
-
-    cases: list[Any] = []
-    for path in sorted(p for p in data_root.rglob("*") if p.is_file()):
-        expected = _expected_format(path)
-        if expected is None:
+    for file_path, _expected in representative_cases:
+        try:
+            converter = get_converter(file_path)
+        except ImportError:
+            # Optional dependencies vary across environments; try the remaining fixtures.
             continue
-        cases.append(pytest.param(path, expected, id=f"{expected}:{path.name}"))
-    return cases
 
+        assert isinstance(converter, BaseConverter)
+        tested += 1
 
-CASES = _discover_cases(DATA_ROOT)
-
-
-def test_integration_fixtures_present() -> None:
-    """
-    Assert the integration fixture directory exists and contains at least one supported file.
-
-    This prevents a silent “0 collected” situation when the data folder is missing.
-    """
-    if not DATA_ROOT.exists():
-        pytest.skip(f"Integration data directory not found: {DATA_ROOT}")
-    assert CASES, f"No supported integration fixture files found under: {DATA_ROOT}"
-
-
-@pytest.mark.parametrize(("file_path", "expected_format"), CASES)
-def test_get_converter_selects_a_converter(file_path: Path, expected_format: str) -> None:
-    """
-    get_converter() should return a concrete converter instance for supported fixtures.
-
-    This validates registry wiring independently from conversion.
-    """
-    try:
-        converter = get_converter(file_path)
-    except ImportError as exc:
+    if tested == 0:
         pytest.skip(
-            f"Optional dependency missing for {expected_format} ({file_path.name}): {exc}"
+            "No representative converters could be instantiated (missing optional dependencies?)"
         )
 
-    # Keep this minimal: the converter must at least be callable for conversion.
-    assert hasattr(converter, "convert")
-    assert callable(converter.convert)
 
-
-@pytest.mark.parametrize(("file_path", "expected_format"), CASES)
 def test_load_file_converts_and_returns_sane_structure(
-    file_path: Path,
-    expected_format: str,
+    representative_cases: list[tuple[Path, str]],
 ) -> None:
-    """
-    load_file() should convert a real fixture file end-to-end into a sensible ConvertedFile.
+    """Convert representative fixtures end-to-end and validate basic output structure."""
+    tested = 0
 
-    The checks are intentionally format-agnostic: at least one measurement must be present,
-    and x/y arrays must be 1D, same length, finite, and non-trivial in size.
-    """
-    try:
-        converted = load_file(file_path)
-    except ImportError as exc:
-        # Optional dependencies for some formats may not be installed everywhere.
-        pytest.skip(f"Optional dependency missing for {file_path.name}: {exc}")
+    for file_path, expected in representative_cases:
+        try:
+            converted = load_file(file_path)
+        except ImportError:
+            # Optional dependencies vary across environments; try the remaining fixtures.
+            continue
 
-    fileformat = str(getattr(converted, "fileformat", "")).lower()
-    assert fileformat
-    assert expected_format in fileformat
+        assert isinstance(converted, ConvertedFile)
 
-    filename = str(getattr(converted, "filename", ""))
-    assert filename  # non-empty string
+        fileformat = str(converted.fileformat).lower()
+        assert fileformat
+        assert expected in fileformat
 
-    converted_path = Path(str(getattr(converted, "path")))
-    assert converted_path.resolve() == file_path.resolve()
+        assert converted.filename
 
-    measurements = getattr(converted, "measurements", None)
-    assert isinstance(measurements, list)
-    assert len(measurements) >= 1
+        assert Path(converted.path).resolve() == file_path.resolve()
 
-    for meas in measurements[:2]:
-        x = np.asarray(getattr(meas, "x"))
-        y = np.asarray(getattr(meas, "y"))
+        assert converted.measurements
 
-        assert x.ndim == 1
-        assert y.ndim == 1
-        assert x.size == y.size
-        assert x.size > 10
+        for meas in converted.measurements[:2]:
+            assert isinstance(meas, ConvertedMeasurement)
+            x = np.asarray(meas.x)
+            y = np.asarray(meas.y)
 
-        assert np.all(np.isfinite(x))
-        assert np.all(np.isfinite(y))
+            assert x.ndim == 1
+            assert y.ndim == 1
+            assert x.size == y.size
+            assert x.size > 10
 
-        dx = np.diff(x)
-        assert np.all(dx >= 0) or np.all(dx <= 0)
+            assert np.all(np.isfinite(x))
+            assert np.all(np.isfinite(y))
 
-    data = converted.to_dict()
-    assert isinstance(data, dict)
-    assert data  # non-empty
+            dx = np.diff(x)
+            assert np.all(dx >= 0) or np.all(dx <= 0)
 
-    assert any(k.lower() == "fileformat" for k in data)
+        data = converted.to_dict()
+        assert isinstance(data, dict)
+        assert data
+        assert any(k.lower() == "fileformat" for k in data)
+
+        tested += 1
+
+    if tested == 0:
+        pytest.skip(
+            "No representative fixtures could be converted (missing optional dependencies?)"
+        )
