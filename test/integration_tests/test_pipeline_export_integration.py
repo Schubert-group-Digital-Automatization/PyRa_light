@@ -149,12 +149,11 @@ def test_csv_export_writes_triplet_for_ra(
     y_rows = _read_csv_rows(y_path)
     meta_rows = _read_csv_rows(meta_path)
 
-    # x/y files are wide: a single row where the first cell is the label.
+    # x/y files are wide: a single row where the first cell is the export id (<stem>_x / <stem>_y).
     assert len(x_rows) == 1
     assert len(y_rows) == 1
-
-    assert x_rows[0][0] == "x"
-    assert y_rows[0][0] == "y"
+    assert x_rows[0][0] == x_path.stem
+    assert y_rows[0][0] == y_path.stem
 
     assert len(x_rows[0]) == len(list(ra.x)) + 1
     assert len(y_rows[0]) == len(list(ra.y)) + 1

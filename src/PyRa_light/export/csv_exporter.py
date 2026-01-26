@@ -112,8 +112,8 @@ class CSVExport:
 
         meta = self._build_meta(ra)
 
-        self._write_vector_csv(x_values, header="x", path=x_path)
-        self._write_vector_csv(y_values, header="y", path=y_path)
+        self._write_vector_csv(x_values, header=f"{stem}_x", path=x_path)
+        self._write_vector_csv(y_values, header=f"{stem}_y", path=y_path)
         self._write_meta_csv(meta, path=meta_path)
 
         logger.debug("Wrote CSV bundle: %s", stem)

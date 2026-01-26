@@ -324,8 +324,8 @@ def test_csv_export_writes_triplet(tmp_path: Path, ra: Ra) -> None:
     assert len(x_rows := _read_csv_rows(x_path)) == 1
     assert len(y_rows := _read_csv_rows(y_path)) == 1
 
-    assert x_rows[0][0] == "x"
-    assert y_rows[0][0] == "y"
+    assert x_rows[0][0] == x_path.stem
+    assert y_rows[0][0] == y_path.stem
 
     assert len(x_rows[0]) == len(list(ra.x)) + 1
     assert len(y_rows[0]) == len(list(ra.y)) + 1
@@ -338,6 +338,7 @@ def test_csv_export_writes_triplet(tmp_path: Path, ra: Ra) -> None:
     assert len(headers) == len(values)
     assert "filename" in headers
     assert "sample_name" in headers
+    assert "index" in headers
 
     expected_stem = f"{Path(ra.filename).stem}_{ra.index}"
     assert x_path.stem.startswith(expected_stem)

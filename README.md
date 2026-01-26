@@ -215,7 +215,7 @@ PyRa_light includes two small exporters: a JSON exporter and a lightweight CSV e
 
 The main JSON entry point is `JSONExport.export(...)`. Exporting always targets an output folder. Each call writes exactly one JSON file depending on the object type, and the exporter simply calls `.to_dict()` on the objects.
 
-Filename rules follow a simple stem scheme: `ConvertedFile` is written as `<filename_stem>_conv.json`, `ConvertedMeasurement` as `<sourcefile_stem>_<index>_conv.json`, `Ra` as `<filename_stem>_<index>_ra.json` (or `<filename_stem>_ra.json` as fallback if `index` is `None`), and `RaProc` as `<merged_sample_name>_<avg|med|acc|proc>.json`. If `suffix` is provided, it is appended as `_{suffix}` to the stem before adding `.json`.
+Filename rules follow a simple stem scheme: `ConvertedFile` is written as `<filename_stem>_conv.json`, `ConvertedMeasurement` as `<sourcefile_stem>_<index>_conv.json`, `Ra` as `<filename_stem>_<index>_ra.json` (or `<filename_stem>_ra.json` only if `index` is `None`), and `RaProc` as `<merged_sample_name>_<avg|med|acc|proc>.json`. If `suffix` is provided, it is appended as `_{suffix}` to the stem before adding the extension.
 
 
 ```python
@@ -231,7 +231,7 @@ exporter.export(rp)                   # RaProc
 ```
 
 
-In addition, `CSVExport` provides a three-file CSV bundle export for unified `Ra` objects. Each call writes exactly three files with stem `<filename_stem>_<index>` (and optional `_{suffix}`), and then appends `_x.csv`, `_y.csv`, and `_meta.csv`. The `*_x.csv` and `*_y.csv` files are wide and contain a single row where the first cell is the label (`x` or `y`) followed by all values. The `*_meta.csv` file is a one-row wide table where each canonical metadata key becomes a column; values are stringified for CSV output. The CSV delimiter is `;`. At the moment, the three-CSV export intentionally supports only `Ra` (processed `RaProc` results should be exported as JSON).
+In addition, `CSVExport` provides a three-file CSV bundle export for unified `Ra` objects. Each call writes exactly three files with stem `<filename_stem>_<index>` (and optional `_{suffix}`), and then appends `_x.csv`, `_y.csv`, and `_meta.csv`. The `*_x.csv` and `*_y.csv` files are wide and contain a single row where the first cell is the export id (`<stem>_x` or `<stem>_y`) followed by all values. The measurement `index` is required for CSV export naming and is carried over from the originating `ConvertedMeasurement`. The `*_meta.csv` file is a one-row wide table where each canonical metadata key becomes a column; values are stringified for CSV output. The CSV delimiter is `;`. At the moment, the three-CSV export intentionally supports only `Ra` (processed `RaProc` results should be exported as JSON).
 
 ```python
 from PyRa_light import CSVExport
