@@ -160,8 +160,8 @@ class JSONExport:
 
         - ConvertedFile: `<base>_conv` (base from `filename` stem, fallback to
           `path` stem)
-        - ConvertedMeasurement: `<path.stem>_<index>`
-        - Ra: `<sample_name>` if present, else `<filename.stem>_ra`
+        - ConvertedMeasurement: `<path.stem>_<index>_conv`
+        - Ra: `<filename.stem>_<index>_ra` (fallback to `<filename.stem>_ra` if `index` is None)
         - RaProc: `<merged_sample_name>_<tag>` where tag is derived from
           `processing['method']`
 
@@ -196,13 +196,14 @@ class JSONExport:
             stem = f"{base}_{obj.index}_conv"
             return self._apply_suffix(stem, suffix)
 
-        #Ra: ra.sample_name + optional suffix; fallback Path(ra.filename).stem + "_ra"
+        # Ra: Path(ra.filename).stem + "_" + ra.index + "_ra" + optional suffix
+        # Fallback (only if index is None): Path(ra.filename).stem + "_ra"
         if isinstance(obj, Ra):
-            base = getattr(obj, "sample_name", None)
-            if base:
-                stem = str(base)
+            base = Path(obj.filename).stem
+            if obj.index is None:
+                stem = f"{base}_ra"
             else:
-                stem = f"{Path(obj.filename).stem}_ra"
+                stem = f"{base}_{obj.index}_ra"
             return self._apply_suffix(stem, suffix)
 
         #RaProc: raproc.merged_sample_name + optional suffix else "merged" + optional suffix

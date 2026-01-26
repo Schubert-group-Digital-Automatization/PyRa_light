@@ -18,7 +18,6 @@ skinparam ClassFontSize 16
 
 skinparam ClassAttributeIconSize 12
 
-skinparam ArrowMessageAlignment center
 skinparam ArrowFontName SF Mono
 
 
@@ -92,6 +91,13 @@ package "PyRa_light.export" as Export {
     --
     + export()
   }
+
+  class CSVExport {
+    + export_dir : Path
+    + mode : ExportMode
+    --
+    + export()
+  }
 }
 
 ' =========================================================================
@@ -105,11 +111,14 @@ core.ra.Ra ..> PlotPrint.PlotPrintModule : uses
 core.raproc.RaProc ..> PlotPrint.PlotPrintModule : uses
 
 ' Export Configuration (Association/Attribute)
-Export.JSONExport -up-> Export.ExportMode : has attribute
+Export.JSONExport --> Export.ExportMode : has attribute
+Export.CSVExport --> Export.ExportMode : has attribute
 
 ' Export Data Flow (Dependency/Parameter)
-Export.JSONExport .up.> core.ra.Ra : <<exports>>
-Export.JSONExport .up.> core.raproc.RaProc : <<exports>>
-Export.JSONExport .up.> core.converted.ConvertedFile : <<exports>>
+Export.JSONExport ...> core.ra.Ra : <<exports>>
+Export.JSONExport ...> core.raproc.RaProc : <<exports>>
+Export.JSONExport ...> core.converted.ConvertedFile : <<exports>>
+Export.JSONExport ...> core.converted.ConvertedMeasurement : <<exports>>
+Export.CSVExport ...> core.ra.Ra : <<exports>>
 
 @enduml

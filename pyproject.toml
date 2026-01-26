@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "PyRa_light"
-version = "0.1.0"
+version = "1.0.0"
 description = "PyRa_light: lightweight properietary Raman-file converter and unifier."
 license = { file = "LICENSE" }
 authors = [

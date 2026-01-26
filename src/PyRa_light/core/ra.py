@@ -33,6 +33,8 @@ class Ra:
         Source file name.
     sample_name : str
         Sample identifier.
+    index : int | None
+        Measurement index (from :class:`ConvertedMeasurement`) if available.
     unified_meta : MetadataDict
         Standardized metadata mapping & by user added metadata.
     x_unit : str
@@ -46,6 +48,7 @@ class Ra:
     y: np.ndarray
     filename: str
     sample_name: str = ""
+    index: int | None = None
     unified_meta: MetadataDict = field(default_factory=dict)
     x_unit: str = DEFAULT_X_UNIT
     y_unit: str = DEFAULT_Y_UNIT
@@ -79,6 +82,9 @@ class Ra:
             raise TypeError(
                 f"unified_meta must be a dict, got {type(self.unified_meta)!r}"
             )
+
+        if self.index is not None and not isinstance(self.index, int):
+            raise TypeError(f"index must be int or None, got {type(self.index)!r}")
 
         self.filename = Path(self.filename).name
 
@@ -121,6 +127,7 @@ class Ra:
             x=measurement.x,
             y=measurement.y,
             filename=filename,
+            index=measurement.index,
             unified_meta=measurement.raw_metadata,
             x_unit=measurement.x_label or DEFAULT_X_UNIT,
             y_unit=measurement.y_label or DEFAULT_Y_UNIT,
@@ -167,6 +174,7 @@ class Ra:
             "y": self.y.tolist(),
             "filename": self.filename,
             "sample_name": self.sample_name,
+            "index": self.index,
             "unified_meta": self.unified_meta,
             "x_unit": self.x_unit,
             "y_unit": self.y_unit,
@@ -254,6 +262,7 @@ class Ra:
         rows = [
             ["filename", self.filename, "attribute"],
             ["sample_name", self.sample_name, "attribute"],
+            ["index", self.index, "attribute"],
         ]
         rows += [[k, v, "unified_meta"] for k, v in self.unified_meta.items()]
         rows += [[k, v, "metadata_user"] for k, v in self.metadata_user.items()]
@@ -329,6 +338,7 @@ class Ra:
         return (
             f"Ra(filename='{self.filename}', "
             f"sample_name='{self.sample_name}', "
+            f"index={self.index}, "
             f"points={self.x.size}, "
             f"x_range={x_range})"
         )

@@ -29,7 +29,7 @@ from .io import (
     get_converter,
     load_file,
 )
-from .export import JSONExport, ensure_dir
+from .export import CSVExport, ExportMode, JSONExport, ensure_dir
 
 __all__ = [
     # core
@@ -53,6 +53,8 @@ __all__ = [
     "get_converter",
     "load_file",
     # export
+    "ExportMode",
+    "CSVExport",
     "JSONExport",
     "ensure_dir",
-    ]
+]

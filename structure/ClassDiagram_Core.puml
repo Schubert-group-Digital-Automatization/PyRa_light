@@ -60,8 +60,8 @@ package "PyRa_light.core" as Core {
       + filename : str
       + measurements : list[ConvertedMeasurement]
       + raw : dict[str, Any]
-      --
       + n_measurements : int
+      --
       + from_dict()
       + print_metadata()
       + plot_raman()

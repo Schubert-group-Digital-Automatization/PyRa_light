@@ -211,13 +211,12 @@ rp.plot_raman(band="iqr")     # quartile band (y_q25..y_q75)
 
 ### 3.5. Export
 
-PyRa_light includes a small JSON exporter. The main entry point is `JSONExport.export(...)`.
+PyRa_light includes two small exporters: a JSON exporter and a lightweight CSV exporter.
 
-A few notes: exporting always targets an output folder. 
-Each call writes exactly one JSON file depending on the object type, and the exporter simply calls `.to_dict()` on the objects.
-Generally, the export works like this:
+The main JSON entry point is `JSONExport.export(...)`. Exporting always targets an output folder. Each call writes exactly one JSON file depending on the object type, and the exporter simply calls `.to_dict()` on the objects.
 
-Filename rules follow a simple stem scheme: `ConvertedFile` is written as `<filename_stem>_conv.json`, `ConvertedMeasurement` as `<sourcefile_stem>_<index>_conv.json`, `Ra` as `<sample_name>.json` (or `<filename_stem>_ra.json` as fallback), and `RaProc` as `<merged_sample_name>_<avg|med|acc|proc>.json`. If `suffix` is provided, it is appended as `_{suffix}` to the stem before adding `.json`.
+Filename rules follow a simple stem scheme: `ConvertedFile` is written as `<filename_stem>_conv.json`, `ConvertedMeasurement` as `<sourcefile_stem>_<index>_conv.json`, `Ra` as `<filename_stem>_<index>_ra.json` (or `<filename_stem>_ra.json` as fallback if `index` is `None`), and `RaProc` as `<merged_sample_name>_<avg|med|acc|proc>.json`. If `suffix` is provided, it is appended as `_{suffix}` to the stem before adding `.json`.
+
 
 ```python
 from PyRa_light import JSONExport
@@ -225,10 +224,23 @@ from PyRa_light import JSONExport
 exporter = JSONExport(export_dir="export_out")
 
 # Export one object per call (writes exactly one JSON file)
-exporter.export(cf)              # ConvertedFile (single JSON containing all measurements)
-exporter.export(cf.measurements[0]) # ConvertedMeasurement
+exporter.export(cf)                   # ConvertedFile (single JSON containing all measurements)
+exporter.export(cf.measurements[0])   # ConvertedMeasurement
 exporter.export(ra, suffix="servus!") # Single Ra
-exporter.export(rp) # RaProc
+exporter.export(rp)                   # RaProc
+```
+
+
+In addition, `CSVExport` provides a three-file CSV bundle export for unified `Ra` objects. Each call writes exactly three files with stem `<filename_stem>_<index>` (and optional `_{suffix}`), and then appends `_x.csv`, `_y.csv`, and `_meta.csv`. The `*_x.csv` and `*_y.csv` files are wide and contain a single row where the first cell is the label (`x` or `y`) followed by all values. The `*_meta.csv` file is a one-row wide table where each canonical metadata key becomes a column; values are stringified for CSV output. The CSV delimiter is `;`. At the moment, the three-CSV export intentionally supports only `Ra` (processed `RaProc` results should be exported as JSON).
+
+```python
+from PyRa_light import CSVExport
+
+exporter = CSVExport(export_dir="export_out")
+
+# Export one Ra per call (writes three CSV files)
+exporter.export(ra)
+exporter.export(ra, suffix="servus!")
 ```
 
 <br>
@@ -364,6 +376,7 @@ The methods below form the main entry points which should be used.
 
 #### 4.3.5 Export
 
+
 - **`JSONExport(export_dir : Path, mode : ExportMode = ExportMode.OVERWRITE)`**  
   Sets up the exporter.  
   + **export_dir: *Path***: output folder where JSON files are written (created if missing).  
@@ -375,6 +388,18 @@ The methods below form the main entry points which should be used.
   + **output_dir: *str | Path | None***: optional output folder override (defaults to `export_dir`). Must be a directory.  
   + **suffix: *str | None***: optional free-form suffix appended as `_{suffix}` to the filename stem.  
   + **returns**: path of the written file, or `None` if `mode=SKIP` and the file exists.
+
+- **`CSVExport(export_dir : Path, mode : ExportMode = ExportMode.OVERWRITE)`**  
+  Sets up the CSV exporter. It writes a three-file CSV bundle for unified `Ra` objects.  
+  + **export_dir: *Path***: output folder where CSV files are written (created if missing).  
+  + **mode: *ExportMode***: what to do if any target file already exists (`OVERWRITE` or `SKIP`).  
+
+- **`CSVExport.export(ra : Ra, output_dir : str | Path | None = None, *, suffix : str | None = None) -> tuple[Path, Path, Path] | None`**  
+  Exports exactly one `Ra` object into exactly three CSV files (`*_x.csv`, `*_y.csv`, `*_meta.csv`). The stem is `<filename_stem>_<index>` (plus optional `_{suffix}`) before adding `_x/_y/_meta`.  
+  + **ra: *Ra***: unified spectrum to export.  
+  + **output_dir: *str | Path | None***: optional output folder override (defaults to `export_dir`). Must be a directory.  
+  + **suffix: *str | None***: optional free-form suffix appended as `_{suffix}` to the filename stem before adding `_x/_y/_meta`.  
+  + **returns**: `(x_csv, y_csv, meta_csv)` paths, or `None` if `mode=SKIP` and any target exists.
 
 ## 5. Testing
 

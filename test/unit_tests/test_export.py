@@ -1,4 +1,4 @@
-"""Tests for JSON exporting."""
+"""Tests for JSON and CSV exporting."""
 
 # pylint: disable=redefined-outer-name
 # pylint: disable=import-error
@@ -6,13 +6,15 @@
 from __future__ import annotations
 
 import json
+import csv
 from pathlib import Path
 
 import numpy as np
 import pytest
 
-from PyRa_light.core import ConvertedFile, ConvertedMeasurement, Ra, RaProc
+from PyRa_light.export.csv_exporter import CSVExport
 from PyRa_light.export.json_exporter import ExportMode, JSONExport
+from PyRa_light.core import ConvertedFile, ConvertedMeasurement, Ra, RaProc
 
 
 # ------------------------------------------------
@@ -55,11 +57,9 @@ def converted_file(meas: ConvertedMeasurement) -> ConvertedFile:
 
 @pytest.fixture()
 def ra(meas: ConvertedMeasurement) -> Ra:
-    """Fixture: one `Ra` with `sample_name` set (naming prefers the attribute)."""
+    """Fixture: one `Ra` created from a `ConvertedMeasurement` (index is propagated)."""
 
-    r = Ra.from_converted_measurement(meas, filename="dummy.spc")
-    r.sample_name = "TestSample"
-    return r
+    return Ra.from_converted_measurement(meas, filename="dummy.spc")
 
 
 @pytest.fixture()
@@ -84,6 +84,13 @@ def raproc() -> RaProc:
         unified_meta={"sample_type": "sample"},
         metadata_user={"group_comment": "merged set"},
     )
+
+
+def _read_csv_rows(path: Path) -> list[list[str]]:
+    """Read a semicolon-delimited CSV file and return all rows."""
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        reader = csv.reader(handle, delimiter=";")
+        return [list(row) for row in reader]
 
 
 # ------------------------------------------------
@@ -118,7 +125,7 @@ def test_export_convertedmeasurement_creates_json(
     tmp_path: Path,
     meas: ConvertedMeasurement,
 ) -> None:
-    """Assert ConvertedMeasurement export: creates `<path.stem>_<index>.json` with x/y."""
+    """Assert ConvertedMeasurement export: creates `<path.stem>_<index>_conv.json` with x/y."""
 
     exporter = JSONExport(export_dir=tmp_path)
     out = exporter.export(meas)
@@ -148,19 +155,18 @@ def test_export_ra_includes_metadata(
     tmp_path: Path,
     ra: Ra,
 ) -> None:
-    """Assert Ra export: naming uses `sample_name` and suffix appends to the stem."""
+    """Assert Ra export: naming uses `<filename.stem>_<index>_ra` and suffix appends to the stem."""
 
     exporter = JSONExport(export_dir=tmp_path)
     out = exporter.export(ra)
 
     out2 = exporter.export(ra, suffix="second")
 
-    assert out.name == f"{ra.sample_name}.json" # type: ignore
-    assert out2 is not None
-    assert out2.name == f"{ra.sample_name}_second.json"
-
     assert out is not None
-    assert out.exists()
+    assert out.name == f"{Path(ra.filename).stem}_{ra.index}_ra.json"
+
+    assert out2 is not None
+    assert out2.name == f"{Path(ra.filename).stem}_{ra.index}_ra_second.json"
 
     with out.open("r", encoding="utf-8") as f:
         data = json.load(f)
@@ -171,11 +177,11 @@ def test_export_ra_includes_metadata(
     assert "metadata_user" in data
 
 
-def test_export_ra_fallback_uses_filename_stem(tmp_path: Path, meas: ConvertedMeasurement) -> None:
-    """Assert Ra export fallback: empty `sample_name` uses `<filename.stem>_ra.json`."""
+def test_export_ra_fallback_when_index_missing(tmp_path: Path, meas: ConvertedMeasurement) -> None:
+    """Assert Ra export fallback: if `index` is None, the stem is `<filename.stem>_ra.json`."""
 
     ra = Ra.from_converted_measurement(meas, filename="dummy.spc")
-    ra.sample_name = ""
+    ra.index = None
 
     exporter = JSONExport(export_dir=tmp_path)
     out = exporter.export(ra)
@@ -290,3 +296,132 @@ def test_export_overwrite_semantics(tmp_path: Path, converted_file: ConvertedFil
         data2 = json.load(f)
 
     assert data2 == data1
+
+
+# ------------------------------------------------
+# CSVExport (Ra-only triplet CSV bundle)
+# ------------------------------------------------
+
+
+def test_csv_export_writes_triplet(tmp_path: Path, ra: Ra) -> None:
+    """Assert CSVExport export: writes *_x.csv, *_y.csv and *_meta.csv for a single Ra."""
+
+    exporter = CSVExport(export_dir=tmp_path)
+    out = exporter.export(ra)
+
+    assert out is not None
+    x_path, y_path, meta_path = out
+
+    assert x_path.exists()
+    assert y_path.exists()
+    assert meta_path.exists()
+
+    assert x_path.name.endswith("_x.csv")
+    assert y_path.name.endswith("_y.csv")
+    assert meta_path.name.endswith("_meta.csv")
+
+    # x/y files are wide: a single row where the first cell is the label.
+    assert len(x_rows := _read_csv_rows(x_path)) == 1
+    assert len(y_rows := _read_csv_rows(y_path)) == 1
+
+    assert x_rows[0][0] == "x"
+    assert y_rows[0][0] == "y"
+
+    assert len(x_rows[0]) == len(list(ra.x)) + 1
+    assert len(y_rows[0]) == len(list(ra.y)) + 1
+
+    meta_rows = _read_csv_rows(meta_path)
+
+    # metadata: header row + single data row
+    assert len(meta_rows) == 2
+    headers, values = meta_rows
+    assert len(headers) == len(values)
+    assert "filename" in headers
+    assert "sample_name" in headers
+
+    expected_stem = f"{Path(ra.filename).stem}_{ra.index}"
+    assert x_path.stem.startswith(expected_stem)
+    assert y_path.stem.startswith(expected_stem)
+    assert meta_path.stem.startswith(expected_stem)
+
+
+def test_csv_export_suffix_appends_to_stem(tmp_path: Path, ra: Ra) -> None:
+    """Assert suffix: it is inserted before the *_x/_y/_meta endings."""
+
+    exporter = CSVExport(export_dir=tmp_path)
+    out = exporter.export(ra, suffix="second")
+
+    assert out is not None
+    x_path, y_path, meta_path = out
+
+    assert x_path.stem.endswith("_second_x")
+    assert y_path.stem.endswith("_second_y")
+    assert meta_path.stem.endswith("_second_meta")
+
+
+def test_csv_export_mode_skip_returns_none(tmp_path: Path, ra: Ra) -> None:
+    """Assert SKIP: if any target exists, the whole bundle is skipped and returns None."""
+
+    exporter = CSVExport(export_dir=tmp_path, mode=ExportMode.OVERWRITE)
+    out = exporter.export(ra)
+    assert out is not None
+
+    x_path, y_path, meta_path = out
+    before_x = x_path.read_bytes()
+    before_y = y_path.read_bytes()
+    before_m = meta_path.read_bytes()
+
+    exporter_skip = CSVExport(export_dir=tmp_path, mode=ExportMode.SKIP)
+    out2 = exporter_skip.export(ra)
+
+    assert out2 is None
+    assert x_path.read_bytes() == before_x
+    assert y_path.read_bytes() == before_y
+    assert meta_path.read_bytes() == before_m
+
+
+def test_csv_export_output_dir_override(tmp_path: Path, ra: Ra) -> None:
+    """Assert output_dir override: writes the CSV bundle into the provided folder."""
+
+    exporter = CSVExport(export_dir=tmp_path)
+    subdir = tmp_path / "nested" / "out"
+
+    out = exporter.export(ra, output_dir=subdir)
+
+    assert out is not None
+    x_path, y_path, meta_path = out
+
+    assert x_path.parent == subdir
+    assert y_path.parent == subdir
+    assert meta_path.parent == subdir
+
+
+def test_csv_export_output_dir_must_be_directory(tmp_path: Path, ra: Ra) -> None:
+    """Assert output_dir validation: ValueError if output_dir exists and is a file."""
+
+    exporter = CSVExport(export_dir=tmp_path)
+
+    not_a_dir = tmp_path / "not_a_dir"
+    not_a_dir.write_text("x", encoding="utf-8")
+
+    with pytest.raises(ValueError):
+        exporter.export(ra, output_dir=not_a_dir)
+
+
+def test_csv_export_rejects_non_ra_objects(tmp_path: Path, converted_file: ConvertedFile) -> None:
+    """Assert type safety: CSVExport is Ra-only and raises TypeError for other types."""
+
+    exporter = CSVExport(export_dir=tmp_path)
+
+    with pytest.raises(TypeError):
+        exporter.export(converted_file)  # type: ignore[arg-type]
+
+
+def test_csv_export_leaves_no_tmp_files(tmp_path: Path, ra: Ra) -> None:
+    """Assert atomic write: no `*.tmp` remains after a successful CSV export."""
+
+    exporter = CSVExport(export_dir=tmp_path)
+    out = exporter.export(ra)
+
+    assert out is not None
+    assert not list(tmp_path.glob("*.tmp"))

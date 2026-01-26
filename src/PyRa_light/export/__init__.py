@@ -1,18 +1,22 @@
-"""
-Export utilities for PyRa_light.
+"""Export utilities for PyRa_light.
 
-This subpackage currently provides JSON-based export via :class:`JSONExport`
-and the helper :func:`ensure_dir` for creating export directories.
+This subpackage provides JSON-based export via :class:`JSONExport`,
+CSV-based export via :class:`CSVExport`, and the helper :func:`ensure_dir`
+for creating export directories.
 """
 
 from __future__ import annotations
 
+from .csv_exporter import CSVExport
 from .json_exporter import (
-    ensure_dir,
+    ExportMode,
     JSONExport,
+    ensure_dir,
 )
 
 __all__ = [
     "ensure_dir",
-    "JSONExport"
+    "ExportMode",
+    "JSONExport",
+    "CSVExport",
 ]
