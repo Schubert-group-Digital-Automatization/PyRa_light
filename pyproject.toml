@@ -23,9 +23,7 @@ classifiers = [
 ]
 dependencies = [
     "numpy",
-    "matplotlib",
     "pandas",
-    "tabulate",
     "brukeropus",
     "h5py",
     "renishawWiRE",
@@ -35,9 +33,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+plot = [
+    "matplotlib",
+]
+print = [
+    "tabulate",
+]
 dev = [
+    "matplotlib",
     "pytest",
     "ruff",
+    "tabulate",
     "mypy",
 ]
 

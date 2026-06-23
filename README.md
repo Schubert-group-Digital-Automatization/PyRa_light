@@ -6,7 +6,7 @@ This package, PyRa_light, grew out of the motivation to build large, reliable Ra
 
 In practice, most Raman spectrometer software offers an export function to write spectra to CSV or TXT. The problem is that during these exports via the vendor-specific software, a large part of the metadata (laser wavelength, integration time, objective, preprocessing flags, etc.) is often lost. This makes data hard to compare across instruments and can make reproducible ML training very difficult. PyRa_light keeps spectra and metadata together by converting vendor files into a unified representation and a stable, standardized metadata schema.
 
-PyRa_light is a small Python package (no UI) that helps you load, convert, inspect, and export Raman spectra from different instrument file formats. It reads the files, cleans up and standardizes the metadata, and provides simple tools to plot, print metadata, and export JSONs.
+PyRa_light is a small Python package (no UI) that helps you load, convert, inspect, and export Raman spectra from different instrument file formats. It reads the files, cleans up and standardizes the metadata, and provides simple optional tools to plot, print metadata, and export JSONs.
 
 PyRa_light also supports merging similar spectra (same x/y shape), for example by averaging or accumulation. This was built to simulate the kind of averaging/accumulation normally done while Raman measuring by measuring repeatedly on the same spot. Here the idea is to average accross multiple measurements from different areas/spots to have a kind of area averaging/accumulation.
 
@@ -55,6 +55,8 @@ pip install "https://github.com/Schubert-group-Digital-Automatization/PyRa_light
 After installation, the library is imported as `PyRa_light`.
 
 Some file formats rely on external reader libraries (for example OPUS, WDF, WIP). If you use those formats, make sure the corresponding reader dependency is installed in your environment (should be done during installation).
+
+Plotting and metadata table printing are optional extras. Install `PyRa_light[plot]` for `.plot_raman()` helpers and `PyRa_light[print]` for `.print_metadata()` helpers.
 
 **Warning**: ***Some of the dependencies seem not well-maintained!***
 
@@ -174,11 +176,11 @@ Here couple of metadata fields might require attention if those values are lost 
 
 ### 3.4. Plotting and printing
 
-Plotting and metadata printing are intentionally lightweight in PyRa_light and is meant for quality assurance/checking before exporting.
+Plotting and metadata printing are intentionally lightweight in PyRa_light and is meant for quality assurance/checking before exporting. They are optional extras: `.plot_raman()` requires `PyRa_light[plot]`, and `.print_metadata()` requires `PyRa_light[print]`.
 
 `ConvertedMeasurement.plot_raman()` plots one measurement. `ConvertedFile.plot_raman(index=None)` overlays all measurements by default or plots a single measurement when an index is given. `Ra.plot_raman()` plots one unified spectrum. `RaProc.plot_raman(band=...)` plots a processed spectrum and can show an uncertainty band such as `y_err` or `iqr`.
 
-For quick inspection of metadata, `.print_metadata()` exists for `ConvertedFile`, `ConvertedMeasurement`, `Ra`, and `RaProc` and prints the metadata_table as tabulate into the terminal.
+For quick inspection of metadata, `.print_metadata()` exists for `ConvertedFile`, `ConvertedMeasurement`, `Ra`, and `RaProc` and prints the metadata_table as tabulate into the terminal when the print extra is installed.
 
 ```python
 from PyRa_light import load_file, Ra, merge_ras
@@ -265,7 +267,7 @@ logging.basicConfig(level=logging.INFO)
 
 ### 4.1 Packages
 
-PyRa_light is split in 4 main packages: in `io` which deals with reading and converting the files `core` which contains the unification and merging logic of `Ra` and `RaProc` as well as `plot_print` which contains the plotting and printing logic.
+PyRa_light is split in 4 main packages: in `io` which deals with reading and converting the files `core` which contains the unification and merging logic of `Ra` and `RaProc` as well as `plot_print` which contains the optional plotting and printing logic.
 
 
 <img src="structure/out/ComponentDiagram.png" alt="drawing" width="800"/>
@@ -301,7 +303,7 @@ Spectral aggregation (accumulation / averaging) is implemented in `core.merge` a
 
 <img src="structure/out/ClassDiagram_export-pp.png" alt="drawing" width="500"/><br>
 
-Plotting and metadata printing lives in `PyRa_light.plot_print` (for example `plot_raman_xy(...)` and the metadata table helpers). The core data classes (`ConvertedFile`, `ConvertedMeasurement`, `Ra`, `RaProc`) provide (`plot_raman()`, `print_metadata()`) that prepare arrays and metadata and delegate rendering/formatting to `plot_print`. This keeps visualization orthogonal to the data model and is mainly meant for inspection and debugging.
+Plotting and metadata printing lives in `PyRa_light.plot_print` (for example `plot_raman_xy(...)` and the metadata table helpers). The package splits rendering into plotting and printing submodules because they depend on different optional libraries. The core data classes (`ConvertedFile`, `ConvertedMeasurement`, `Ra`, `RaProc`) provide (`plot_raman()`, `print_metadata()`) that prepare arrays and metadata and delegate rendering/formatting to `plot_print`. If the matching optional dependency is missing, these convenience methods raise an `ImportError` that names the required extra. This keeps visualization orthogonal to the data model and is mainly meant for inspection and debugging.
 
 Export is implemented in `PyRa_light.export`. The `JSONExport` class writes `ConvertedFile`, `ConvertedMeasurement`, `Ra`, and `RaProc` objects to JSON (main entry point: `JSONExport.export(...)`).
 
@@ -327,6 +329,7 @@ The methods below form the main entry points which should be used.
 
 - **`ConvertedFile.plot_raman(index : int | None = None, ax = None, show : bool = True, title : str | None = None)`**  
   Plots Raman spectra contained in a `ConvertedFile`. If `index` is `None`, all measurements are overlaid.
+  Requires the `plot` extra.
   + **index: *int | None***: measurement index to plot; `None` overlays all.
   + **ax: *matplotlib.axes.Axes | None***: target axes; created if `None`.
   + **show: *bool***: show the figure.
@@ -334,9 +337,11 @@ The methods below form the main entry points which should be used.
 
 - **`ConvertedMeasurement.plot_raman(ax = None, show : bool = True, title : str | None = None)`**  
   Plots a single converted measurement.
+  Requires the `plot` extra.
 
 - **`ConvertedFile.print_metadata(tablefmt : str = "github", return_str : bool = False)`**  
   Prints (or returns) formatted metadata tables for file-level and measurement-level metadata.
+  Requires the `print` extra.
   + **tablefmt: *str***: tabulate output format.
   + **return_str: *bool***: return the formatted string instead of printing.
 
