@@ -11,7 +11,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from jcamp import jcamp_readfile
+try:
+    from jcamp import jcamp_readfile
+except ImportError:
+    from jcamp import readfile as jcamp_readfile
 
 from ..converters_base import BaseConverter
 
