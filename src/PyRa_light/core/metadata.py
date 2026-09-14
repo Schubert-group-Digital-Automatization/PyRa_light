@@ -960,6 +960,8 @@ FIELD_MAPPINGS = [
             "dark_subtracted",
             "background corrected",
             "raman background corrected",
+            "automatic fluorescence rejection",
+            "automatic_fluorescence_rejection",
         ],
         converter=_to_bool,
     ),
