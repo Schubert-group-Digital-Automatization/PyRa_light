@@ -3,14 +3,18 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
-from .metadata import MetadataDict, MetadataField, unify_metadata
+from ..plot_print import plot_raman_xy, print_metadata_tables
+from ..plot_print.availability import (
+    require_plot_raman_xy,
+    require_print_metadata_tables,
+)
 from .converted import ConvertedFile, ConvertedMeasurement
-from ..plot_print.plot_print import print_metadata_tables, plot_raman_xy
+from .metadata import MetadataDict, MetadataField, unify_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -267,7 +271,8 @@ class Ra:
         rows += [[k, v, "unified_meta"] for k, v in self.unified_meta.items()]
         rows += [[k, v, "metadata_user"] for k, v in self.metadata_user.items()]
 
-        return print_metadata_tables(
+        printer = require_print_metadata_tables(print_metadata_tables)
+        return printer(
             tables=[("Ra metadata", rows)],
             tablefmt=tablefmt,
             return_str=return_str,
@@ -282,7 +287,7 @@ class Ra:
     ):
         """Plot the Raman spectrum.
 
-        This is a convenience wrapper around :func:`PyRa_light.plot_print.plot_print.plot_raman_xy`.
+        This is a convenience wrapper around :func:`PyRa_light.plot_print.plot_raman_xy`.
         It plots ``self.x`` versus ``self.y`` and applies the stored axis units.
 
         Parameters
@@ -309,7 +314,8 @@ class Ra:
         if title is None:
             title = self.sample_name or self.filename
 
-        return plot_raman_xy(
+        plotter = require_plot_raman_xy(plot_raman_xy)
+        return plotter(
             self.x,
             self.y,
             x_label=self.x_unit,

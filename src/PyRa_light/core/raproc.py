@@ -4,12 +4,16 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional, TypedDict
+from typing import Any, TypedDict
 
 import numpy as np
 
+from ..plot_print import plot_raman_xy, print_metadata_tables
+from ..plot_print.availability import (
+    require_plot_raman_xy,
+    require_print_metadata_tables,
+)
 from .metadata import MetadataDict, MetadataField
-from ..plot_print.plot_print import print_metadata_tables, plot_raman_xy
 
 logger = logging.getLogger(__name__)
 
@@ -95,11 +99,11 @@ class RaProc:
     merged_sample_name: str
     x_processed: np.ndarray
     y_processed: np.ndarray
-    y_err: Optional[np.ndarray] = None
-    y_sem: Optional[np.ndarray] = None
-    y_mad: Optional[np.ndarray] = None
-    y_q25: Optional[np.ndarray] = None
-    y_q75: Optional[np.ndarray] = None
+    y_err: np.ndarray | None = None
+    y_sem: np.ndarray | None = None
+    y_mad: np.ndarray | None = None
+    y_q25: np.ndarray | None = None
+    y_q75: np.ndarray | None = None
     x_unit: str = DEFAULT_X_UNIT
     y_unit: str = DEFAULT_Y_UNIT
     unified_meta: MetadataDict = field(default_factory=dict)
@@ -304,7 +308,8 @@ class RaProc:
         rows += [[k, v, "unified_meta"] for k, v in self.unified_meta.items()]
         rows += [[k, v, "metadata_user"] for k, v in self.metadata_user.items()]
 
-        return print_metadata_tables(
+        printer = require_print_metadata_tables(print_metadata_tables)
+        return printer(
             tables=[("RaProc metadata", rows)],
             tablefmt=tablefmt,
             return_str=return_str,
@@ -372,7 +377,8 @@ class RaProc:
                     "Unknown band. Use one of None, 'y_err', 'y_sem', 'y_mad', 'iqr'."
                 )
 
-        return plot_raman_xy(
+        plotter = require_plot_raman_xy(plot_raman_xy)
+        return plotter(
             self.x_processed,
             self.y_processed,
             x_label=self.x_unit,

@@ -2,13 +2,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from ..plot_print.plot_print import print_metadata_tables, plot_raman_xy
+from ..plot_print import plot_raman_xy, print_metadata_tables
+from ..plot_print.availability import (
+    require_plot_raman_xy,
+    require_print_metadata_tables,
+)
 
 
 @dataclass
@@ -179,7 +182,8 @@ class ConvertedFile:
             rows += [[k, v, "raw_measurement_metadata"] for k, v in m.raw_metadata.items()]
             tables.append((f"ConvertedMeasurement[{m.index}] metadata", rows))
 
-        return print_metadata_tables(tables=tables, tablefmt=tablefmt, return_str=return_str)
+        printer = require_print_metadata_tables(print_metadata_tables)
+        return printer(tables=tables, tablefmt=tablefmt, return_str=return_str)
 
     def plot_raman(
         self,
@@ -235,7 +239,8 @@ class ConvertedFile:
             x_label = m.x_label or "wavenumber [1/cm]"
             y_label = m.y_label or "intensity [a.u.]"
 
-            fig, ax = plot_raman_xy(
+            plotter = require_plot_raman_xy(plot_raman_xy)
+            fig, ax = plotter(
                 m.x,
                 m.y,
                 x_label=x_label,
@@ -406,7 +411,8 @@ class ConvertedMeasurement:
         ]
         rows += [[k, v, "raw_measurement_metadata"] for k, v in self.raw_metadata.items()]
 
-        return print_metadata_tables(
+        printer = require_print_metadata_tables(print_metadata_tables)
+        return printer(
             tables=[("ConvertedMeasurement metadata", rows)],
             tablefmt=tablefmt,
             return_str=return_str,
@@ -446,7 +452,8 @@ class ConvertedMeasurement:
         x_label = self.x_label or "wavenumber [1/cm]"
         y_label = self.y_label or "intensity [a.u.]"
 
-        return plot_raman_xy(
+        plotter = require_plot_raman_xy(plot_raman_xy)
+        return plotter(
             self.x,
             self.y,
             x_label=x_label,
